@@ -112,7 +112,7 @@ class ABME(torch.nn.Module):
         return np.clip(im, 0, 255.).astype(np.uint8)
 
     def x8(self, im0, im8):
-        frame0, frame1 = ABME._im_to_tensor(im0), ABME._im_to_tensor(im8)
+        frame0, frame8 = ABME._im_to_tensor(im0), ABME._im_to_tensor(im8)
         with torch.no_grad():
             frame0, frame8 = frame0.to(self.device), frame8.to(self.device)
             frame4 = self.forward(frame0, frame8)
