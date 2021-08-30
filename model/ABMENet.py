@@ -4,7 +4,9 @@ import torch
 import torch.nn.functional as F
 from torch.backends import cudnn
 
-from model import SBMENet, ABMRNet, SynthesisNet
+from .SBMNet import SBMENet
+from .ABMNet import ABMRNet
+from .SynthesisNet import SynthesisNet
 from utils import warp
 
 cudnn.benchmark = True
