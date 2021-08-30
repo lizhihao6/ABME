@@ -13,4 +13,4 @@ if __name__ == "__main__":
     for i, im in enumerate(abme.x8(im0, im8)):
         imwrite(os.path.join(SAVE_DIR, "{}.png".format(i)), im)
     end = time.clock()
-    print("VFI time: {}".format(start-end))
+    print("VFI time: {}".format(end-start))
