@@ -1,19 +1,21 @@
+import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import numpy as np
+
 
 class DynFilter(nn.Module):
-    def __init__(self, kernel_size=(3,3), padding=1, DDP=False):
+    def __init__(self, kernel_size=(3, 3), padding=1, DDP=False):
         super(DynFilter, self).__init__()
 
         self.padding = padding
-        
-        filter_localexpand_np = np.reshape(np.eye(np.prod(kernel_size), np.prod(kernel_size)), (np.prod(kernel_size), 1, kernel_size[0], kernel_size[1]))
+
+        filter_localexpand_np = np.reshape(np.eye(np.prod(kernel_size), np.prod(kernel_size)),
+                                           (np.prod(kernel_size), 1, kernel_size[0], kernel_size[1]))
         if DDP:
-            self.register_buffer('filter_localexpand', torch.FloatTensor(filter_localexpand_np)) # for DDP model
+            self.register_buffer('filter_localexpand', torch.FloatTensor(filter_localexpand_np))  # for DDP model
         else:
-            self.filter_localexpand = torch.FloatTensor(filter_localexpand_np).cuda() # for single model
+            self.filter_localexpand = torch.FloatTensor(filter_localexpand_np).cuda()  # for single model
 
     def forward(self, x, filter):
         x_localexpand = []
@@ -111,18 +113,18 @@ class GridNet_Filter(nn.Module):
                                 padding=(1, 1))
             )
 
-        self.First_Block = First(4 * (3+32), 32)  # 4*RGB(3) + 4* 1st features(32)
+        self.First_Block = First(4 * (3 + 32), 32)  # 4*RGB(3) + 4* 1st features(32)
 
         self.Row1_1 = lateral(32, 32)
         self.Row1_2 = lateral(32, 32)
         self.Row1_3 = lateral(32, 32)
         self.Row1_4 = lateral(32, 32)
         self.Row1_5 = lateral(32, 32)
-        self.Last_Block = Last(32, output_channel) 
+        self.Last_Block = Last(32, output_channel)
 
         self.Row2_0 = First(4 * 64, 64)
 
-        self.Row2_1 = lateral(64, 64)  
+        self.Row2_1 = lateral(64, 64)
         self.Row2_2 = lateral(64, 64)
         self.Row2_3 = lateral(64, 64)
         self.Row2_4 = lateral(64, 64)
@@ -130,7 +132,7 @@ class GridNet_Filter(nn.Module):
 
         self.Row3_0 = First(4 * 96, 96)
 
-        self.Row3_1 = lateral(96, 96)  
+        self.Row3_1 = lateral(96, 96)
         self.Row3_2 = lateral(96, 96)
         self.Row3_3 = lateral(96, 96)
         self.Row3_4 = lateral(96, 96)
@@ -155,12 +157,14 @@ class GridNet_Filter(nn.Module):
         Variable1_2 = self.Row1_1(Variable1_1) + Variable1_1  # 2
         Variable1_3 = self.Row1_2(Variable1_2) + Variable1_2  # 3
 
-        Variable2_0 = self.Row2_0(torch.cat((V_0_t_SBM[1][:, 3:, :, :], V_0_t_ABM[1][:, 3:, :, :], V_1_t_SBM[1][:, 3:, :, :], V_1_t_ABM[1][:, 3:, :, :]), dim=1))  # 4
+        Variable2_0 = self.Row2_0(torch.cat((V_0_t_SBM[1][:, 3:, :, :], V_0_t_ABM[1][:, 3:, :, :],
+                                             V_1_t_SBM[1][:, 3:, :, :], V_1_t_ABM[1][:, 3:, :, :]), dim=1))  # 4
         Variable2_1 = self.Col1_1(Variable1_1) + Variable2_0  # 5
         Variable2_2 = self.Col1_2(Variable1_2) + self.Row2_1(Variable2_1) + Variable2_1  # 6
         Variable2_3 = self.Col1_3(Variable1_3) + self.Row2_2(Variable2_2) + Variable2_2  # 7
 
-        Variable3_0 = self.Row3_0(torch.cat((V_0_t_SBM[2][:, 3:, :, :], V_0_t_ABM[2][:, 3:, :, :], V_1_t_SBM[2][:, 3:, :, :], V_1_t_ABM[2][:, 3:, :, :]), dim=1))  # 8
+        Variable3_0 = self.Row3_0(torch.cat((V_0_t_SBM[2][:, 3:, :, :], V_0_t_ABM[2][:, 3:, :, :],
+                                             V_1_t_SBM[2][:, 3:, :, :], V_1_t_ABM[2][:, 3:, :, :]), dim=1))  # 8
         Variable3_1 = self.Col2_1(Variable2_1) + Variable3_0  # 9
         Variable3_2 = self.Col2_2(Variable2_2) + self.Row3_1(Variable3_1) + Variable3_1  # 10
         Variable3_3 = self.Col2_3(Variable2_3) + self.Row3_2(Variable3_2) + Variable3_2  # 11
@@ -274,16 +278,21 @@ class GridNet_Refine(nn.Module):
         self.Col2_6 = upsampling(96, 64)
 
     def forward(self, V_t, V_SBM_bw, V_ABM_bw, V_SBM_fw, V_ABM_fw):
-        Variable1_1 = self.First_Block(torch.cat((V_t, V_SBM_bw[0][:, 3:, :, :], V_ABM_bw[0][:, 3:, :, :], V_SBM_fw[0][:, 3:, :, :], V_ABM_fw[0][:, 3:, :, :]), dim=1))  # 1
+        Variable1_1 = self.First_Block(torch.cat((V_t, V_SBM_bw[0][:, 3:, :, :], V_ABM_bw[0][:, 3:, :, :],
+                                                  V_SBM_fw[0][:, 3:, :, :], V_ABM_fw[0][:, 3:, :, :]), dim=1))  # 1
         Variable1_2 = self.Row1_1(Variable1_1) + Variable1_1  # 2
         Variable1_3 = self.Row1_2(Variable1_2) + Variable1_2  # 3
 
-        Variable2_0 = self.Row2_0(torch.cat((V_SBM_bw[1][:, 3:, :, :], V_ABM_bw[1][:, 3:, :, :], V_SBM_fw[1][:, 3:, :, :], V_ABM_fw[1][:, 3:, :, :]), dim=1))  # 4
+        Variable2_0 = self.Row2_0(torch.cat(
+            (V_SBM_bw[1][:, 3:, :, :], V_ABM_bw[1][:, 3:, :, :], V_SBM_fw[1][:, 3:, :, :], V_ABM_fw[1][:, 3:, :, :]),
+            dim=1))  # 4
         Variable2_1 = self.Col1_1(Variable1_1) + Variable2_0  # 5
         Variable2_2 = self.Col1_2(Variable1_2) + self.Row2_1(Variable2_1) + Variable2_1  # 6
         Variable2_3 = self.Col1_3(Variable1_3) + self.Row2_2(Variable2_2) + Variable2_2  # 7
 
-        Variable3_0 = self.Row3_0(torch.cat((V_SBM_bw[2][:, 3:, :, :], V_ABM_bw[2][:, 3:, :, :], V_SBM_fw[2][:, 3:, :, :], V_ABM_fw[2][:, 3:, :, :]), dim=1))  # 8
+        Variable3_0 = self.Row3_0(torch.cat(
+            (V_SBM_bw[2][:, 3:, :, :], V_ABM_bw[2][:, 3:, :, :], V_SBM_fw[2][:, 3:, :, :], V_ABM_fw[2][:, 3:, :, :]),
+            dim=1))  # 8
         Variable3_1 = self.Col2_1(Variable2_1) + Variable3_0  # 9
         Variable3_2 = self.Col2_2(Variable2_2) + self.Row3_1(Variable3_1) + Variable3_1  # 10
         Variable3_3 = self.Col2_3(Variable2_3) + self.Row3_2(Variable3_2) + Variable3_2  # 11
@@ -306,14 +315,14 @@ class GridNet_Refine(nn.Module):
 class SynthesisNet(nn.Module):
     def __init__(self, args):
         super(SynthesisNet, self).__init__()
-        
+
         self.ctxNet = Feature_Pyramid()
 
         self.FilterNet = GridNet_Filter(3 * 3 * 4)
 
         self.RefineNet = GridNet_Refine()
-        
-        self.Filtering = DynFilter(kernel_size=(3,3), padding=1, DDP=args.DDP)
+
+        self.Filtering = DynFilter(kernel_size=(3, 3), padding=1, DDP=args.DDP)
 
     def warp(self, x, flo):
         B, C, H, W = x.size()
@@ -356,11 +365,11 @@ class SynthesisNet(nn.Module):
     def forward(self, input, time_step=0.5):
         I0 = input[:, :3, :, :]  # First frame
         I1 = input[:, 3:6, :, :]  # Second frame
-        SBM_t_1 = input[:, 6:8, :, :]  
+        SBM_t_1 = input[:, 6:8, :, :]
         SBM_Pyr_t_1 = self.Flow_pyramid(SBM_t_1)
-        ABM_t_1 = input[:, 8:10, :, :] 
+        ABM_t_1 = input[:, 8:10, :, :]
         ABM_t_0 = input[:, 10:12, :, :]
-        
+
         ABM_Pyr_t_0 = self.Flow_pyramid(ABM_t_0)
         ABM_Pyr_t_1 = self.Flow_pyramid(ABM_t_1)
 
@@ -389,11 +398,13 @@ class SynthesisNet(nn.Module):
             V_Pyr_1_t_ABM.append(V_1_t_ABM)
 
         DF = F.softmax(self.FilterNet(V_Pyr_0_t_SBM, V_Pyr_0_t_ABM, V_Pyr_1_t_SBM, V_Pyr_1_t_ABM), dim=1)
-        
+
         Filtered_input = []
         for i in range(V_Pyr_0_t_SBM[0].size(1)):
-            Filtered_input.append(self.Filtering(torch.cat((V_Pyr_0_t_SBM[0][:, i:i + 1, :, :], V_Pyr_0_t_ABM[0][:, i:i + 1, :, :],
-                                                            V_Pyr_1_t_SBM[0][:, i:i + 1, :, :], V_Pyr_1_t_ABM[0][:, i:i + 1, :, :]), dim=1), DF))
+            Filtered_input.append(
+                self.Filtering(torch.cat((V_Pyr_0_t_SBM[0][:, i:i + 1, :, :], V_Pyr_0_t_ABM[0][:, i:i + 1, :, :],
+                                          V_Pyr_1_t_SBM[0][:, i:i + 1, :, :], V_Pyr_1_t_ABM[0][:, i:i + 1, :, :]),
+                                         dim=1), DF))
 
         Filtered_t = torch.cat(Filtered_input, dim=1)
 

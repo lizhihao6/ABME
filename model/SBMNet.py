@@ -1,12 +1,14 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
+
 from Bilateral_Correlation import BilateralCorrelation
+
 
 def conv(in_channels, out_channels, kernel_size=3, stride=1, padding=1, dilation=1):
     return nn.Sequential(
-        nn.Conv2d(in_channels, out_channels, kernel_size = kernel_size, stride=stride,
-                  padding = padding, dilation = dilation, bias= True),
+        nn.Conv2d(in_channels, out_channels, kernel_size=kernel_size, stride=stride,
+                  padding=padding, dilation=dilation, bias=True),
         nn.LeakyReLU(0.1))
 
 
@@ -17,97 +19,99 @@ def predict_flow(in_channels):
 def deconv(in_channels, out_channels, kernel_size=4, stride=2, padding=1):
     return nn.ConvTranspose2d(in_channels, out_channels, kernel_size, stride, padding, bias=True)
 
+
 class SBMENet(nn.Module):
     """
     Symmetric Bilateral Motion Estimation network in BMBC
     """
+
     def __init__(self):
         super(SBMENet, self).__init__()
 
-        self.conv1a  = conv(3,    16, kernel_size=3, stride=2) # Stride is '1' in BMBC
-        self.conv1aa = conv(16,   16, kernel_size=3, stride=1)
-        self.conv1b  = conv(16,   16, kernel_size=3, stride=1)
-        self.conv2a  = conv(16,   32, kernel_size=3, stride=2)
-        self.conv2aa = conv(32,   32, kernel_size=3, stride=1)
-        self.conv2b  = conv(32,   32, kernel_size=3, stride=1)
-        self.conv3a  = conv(32,   64, kernel_size=3, stride=2)
-        self.conv3aa = conv(64,   64, kernel_size=3, stride=1)
-        self.conv3b  = conv(64,   64, kernel_size=3, stride=1)
-        self.conv4a  = conv(64,   96, kernel_size=3, stride=2)
-        self.conv4aa = conv(96,   96, kernel_size=3, stride=1)
-        self.conv4b  = conv(96,   96, kernel_size=3, stride=1)
-        self.conv5a  = conv(96,  128, kernel_size=3, stride=2)
+        self.conv1a = conv(3, 16, kernel_size=3, stride=2)  # Stride is '1' in BMBC
+        self.conv1aa = conv(16, 16, kernel_size=3, stride=1)
+        self.conv1b = conv(16, 16, kernel_size=3, stride=1)
+        self.conv2a = conv(16, 32, kernel_size=3, stride=2)
+        self.conv2aa = conv(32, 32, kernel_size=3, stride=1)
+        self.conv2b = conv(32, 32, kernel_size=3, stride=1)
+        self.conv3a = conv(32, 64, kernel_size=3, stride=2)
+        self.conv3aa = conv(64, 64, kernel_size=3, stride=1)
+        self.conv3b = conv(64, 64, kernel_size=3, stride=1)
+        self.conv4a = conv(64, 96, kernel_size=3, stride=2)
+        self.conv4aa = conv(96, 96, kernel_size=3, stride=1)
+        self.conv4b = conv(96, 96, kernel_size=3, stride=1)
+        self.conv5a = conv(96, 128, kernel_size=3, stride=2)
         self.conv5aa = conv(128, 128, kernel_size=3, stride=1)
-        self.conv5b  = conv(128, 128, kernel_size=3, stride=1)
+        self.conv5b = conv(128, 128, kernel_size=3, stride=1)
         self.conv6aa = conv(128, 196, kernel_size=3, stride=2)
-        self.conv6a  = conv(196, 196, kernel_size=3, stride=1)
-        self.conv6b  = conv(196, 196, kernel_size=3, stride=1)
+        self.conv6a = conv(196, 196, kernel_size=3, stride=1)
+        self.conv6b = conv(196, 196, kernel_size=3, stride=1)
 
         self.leakyRELU = nn.LeakyReLU(0.1)
 
         # nd = (2*md + 1)**2
         dd = np.cumsum([128, 128, 96, 64, 32])
 
-        od = (2*6+1) ** 2
+        od = (2 * 6 + 1) ** 2
         self.bilateral_corr6 = BilateralCorrelation(md=6)
-        self.conv6_0 = conv(od,         128, kernel_size=3, stride=1)
+        self.conv6_0 = conv(od, 128, kernel_size=3, stride=1)
         self.conv6_1 = conv(od + dd[0], 128, kernel_size=3, stride=1)
-        self.conv6_2 = conv(od + dd[1],  96, kernel_size=3, stride=1)
-        self.conv6_3 = conv(od + dd[2],  64, kernel_size=3, stride=1)
-        self.conv6_4 = conv(od + dd[3],  32, kernel_size=3, stride=1)
+        self.conv6_2 = conv(od + dd[1], 96, kernel_size=3, stride=1)
+        self.conv6_3 = conv(od + dd[2], 64, kernel_size=3, stride=1)
+        self.conv6_4 = conv(od + dd[3], 32, kernel_size=3, stride=1)
         self.predict_flow6 = predict_flow(od + dd[4])
-        self.deconv6 = deconv(2,          2, kernel_size=4, stride=2, padding=1)
+        self.deconv6 = deconv(2, 2, kernel_size=4, stride=2, padding=1)
         self.upfeat6 = deconv(od + dd[4], 2, kernel_size=4, stride=2, padding=1)
 
-        od = (2*4+1) ** 2 + 128*2 + 4
+        od = (2 * 4 + 1) ** 2 + 128 * 2 + 4
         self.bilateral_corr5 = BilateralCorrelation(md=4)
-        self.conv5_0 = conv(od,         128, kernel_size=3, stride=1)
+        self.conv5_0 = conv(od, 128, kernel_size=3, stride=1)
         self.conv5_1 = conv(od + dd[0], 128, kernel_size=3, stride=1)
-        self.conv5_2 = conv(od + dd[1],  96, kernel_size=3, stride=1)
-        self.conv5_3 = conv(od + dd[2],  64, kernel_size=3, stride=1)
-        self.conv5_4 = conv(od + dd[3],  32, kernel_size=3, stride=1)
+        self.conv5_2 = conv(od + dd[1], 96, kernel_size=3, stride=1)
+        self.conv5_3 = conv(od + dd[2], 64, kernel_size=3, stride=1)
+        self.conv5_4 = conv(od + dd[3], 32, kernel_size=3, stride=1)
         self.predict_flow5 = predict_flow(od + dd[4])
-        self.deconv5 = deconv(2,          2, kernel_size=4, stride=2, padding=1)
+        self.deconv5 = deconv(2, 2, kernel_size=4, stride=2, padding=1)
         self.upfeat5 = deconv(od + dd[4], 2, kernel_size=4, stride=2, padding=1)
 
-        od = (2*4+1) ** 2  + 96*2 + 4
+        od = (2 * 4 + 1) ** 2 + 96 * 2 + 4
         self.bilateral_corr4 = BilateralCorrelation(md=4)
-        self.conv4_0 = conv(od,         128, kernel_size=3, stride=1)
+        self.conv4_0 = conv(od, 128, kernel_size=3, stride=1)
         self.conv4_1 = conv(od + dd[0], 128, kernel_size=3, stride=1)
-        self.conv4_2 = conv(od + dd[1],  96, kernel_size=3, stride=1)
-        self.conv4_3 = conv(od + dd[2],  64, kernel_size=3, stride=1)
-        self.conv4_4 = conv(od + dd[3],  32, kernel_size=3, stride=1)
+        self.conv4_2 = conv(od + dd[1], 96, kernel_size=3, stride=1)
+        self.conv4_3 = conv(od + dd[2], 64, kernel_size=3, stride=1)
+        self.conv4_4 = conv(od + dd[3], 32, kernel_size=3, stride=1)
         self.predict_flow4 = predict_flow(od + dd[4])
-        self.deconv4 = deconv(2,          2, kernel_size=4, stride=2, padding=1)
+        self.deconv4 = deconv(2, 2, kernel_size=4, stride=2, padding=1)
         self.upfeat4 = deconv(od + dd[4], 2, kernel_size=4, stride=2, padding=1)
 
-        od = (2*2+1) ** 2  + 64*2 + 4
+        od = (2 * 2 + 1) ** 2 + 64 * 2 + 4
         self.bilateral_corr3 = BilateralCorrelation(md=2)
-        self.conv3_0 = conv(od,         128, kernel_size=3, stride=1)
+        self.conv3_0 = conv(od, 128, kernel_size=3, stride=1)
         self.conv3_1 = conv(od + dd[0], 128, kernel_size=3, stride=1)
-        self.conv3_2 = conv(od + dd[1],  96, kernel_size=3, stride=1)
-        self.conv3_3 = conv(od + dd[2],  64, kernel_size=3, stride=1)
-        self.conv3_4 = conv(od + dd[3],  32, kernel_size=3, stride=1)
+        self.conv3_2 = conv(od + dd[1], 96, kernel_size=3, stride=1)
+        self.conv3_3 = conv(od + dd[2], 64, kernel_size=3, stride=1)
+        self.conv3_4 = conv(od + dd[3], 32, kernel_size=3, stride=1)
         self.predict_flow3 = predict_flow(od + dd[4])
-        self.deconv3 = deconv(2,          2, kernel_size=4, stride=2, padding=1)
+        self.deconv3 = deconv(2, 2, kernel_size=4, stride=2, padding=1)
         self.upfeat3 = deconv(od + dd[4], 2, kernel_size=4, stride=2, padding=1)
 
-        od = (2*2+1) ** 2  + 32*2 + 4
+        od = (2 * 2 + 1) ** 2 + 32 * 2 + 4
         self.bilateral_corr2 = BilateralCorrelation(md=2)
-        self.conv2_0 = conv(od,         128, kernel_size=3, stride=1)
+        self.conv2_0 = conv(od, 128, kernel_size=3, stride=1)
         self.conv2_1 = conv(od + dd[0], 128, kernel_size=3, stride=1)
-        self.conv2_2 = conv(od + dd[1],  96, kernel_size=3, stride=1)
-        self.conv2_3 = conv(od + dd[2],  64, kernel_size=3, stride=1)
-        self.conv2_4 = conv(od + dd[3],  32, kernel_size=3, stride=1)
+        self.conv2_2 = conv(od + dd[1], 96, kernel_size=3, stride=1)
+        self.conv2_3 = conv(od + dd[2], 64, kernel_size=3, stride=1)
+        self.conv2_4 = conv(od + dd[3], 32, kernel_size=3, stride=1)
         self.predict_flow2 = predict_flow(od + dd[4])
         self.deconv2 = deconv(2, 2, kernel_size=4, stride=2, padding=1)
 
         self.dc_conv1 = conv(od + dd[4], 128, kernel_size=3, stride=1, padding=1, dilation=1)
-        self.dc_conv2 = conv(128,        128, kernel_size=3, stride=1, padding=2, dilation=2)
-        self.dc_conv3 = conv(128,        128, kernel_size=3, stride=1, padding=4, dilation=4)
-        self.dc_conv4 = conv(128,         96, kernel_size=3, stride=1, padding=8, dilation=8)
-        self.dc_conv5 = conv(96,          64, kernel_size=3, stride=1, padding=16, dilation=16)
-        self.dc_conv6 = conv(64,          32, kernel_size=3, stride=1, padding=1, dilation=1)
+        self.dc_conv2 = conv(128, 128, kernel_size=3, stride=1, padding=2, dilation=2)
+        self.dc_conv3 = conv(128, 128, kernel_size=3, stride=1, padding=4, dilation=4)
+        self.dc_conv4 = conv(128, 96, kernel_size=3, stride=1, padding=8, dilation=8)
+        self.dc_conv5 = conv(96, 64, kernel_size=3, stride=1, padding=16, dilation=16)
+        self.dc_conv6 = conv(64, 32, kernel_size=3, stride=1, padding=1, dilation=1)
         self.dc_conv7 = predict_flow(32)
 
         for m in self.modules():
@@ -154,7 +158,6 @@ class SBMENet(nn.Module):
         im1 = x[:, :3, :, :]
         im2 = x[:, 3:, :, :]
 
-
         c11 = self.conv1b(self.conv1aa(self.conv1a(im1)))
         c21 = self.conv1b(self.conv1aa(self.conv1a(im2)))
         c12 = self.conv2b(self.conv2aa(self.conv2a(c11)))
@@ -180,9 +183,9 @@ class SBMENet(nn.Module):
         up_flow6 = self.deconv6(flow6)
         up_feat6 = self.upfeat6(x)
 
-        warp1_5= self.warp(c15, up_flow6* (-0.625))
-        warp2_5 = self.warp(c25, up_flow6* 0.625)
-        bicorr5 = self.bilateral_corr5(c15, c25, up_flow6*0.625)
+        warp1_5 = self.warp(c15, up_flow6 * (-0.625))
+        warp2_5 = self.warp(c25, up_flow6 * 0.625)
+        bicorr5 = self.bilateral_corr5(c15, c25, up_flow6 * 0.625)
         bicorr5 = self.leakyRELU(bicorr5)
         x = torch.cat((bicorr5, warp1_5, warp2_5, up_flow6, up_feat6), 1)
         x = torch.cat((self.conv5_0(x), x), 1)
@@ -194,9 +197,9 @@ class SBMENet(nn.Module):
         up_flow5 = self.deconv5(flow5)
         up_feat5 = self.upfeat5(x)
 
-        warp1_4 = self.warp(c14, up_flow5* (-1.25))
-        warp2_4 = self.warp(c24, up_flow5* 1.25)
-        bicorr4 = self.bilateral_corr4(c14,c24,up_flow5*1.25)
+        warp1_4 = self.warp(c14, up_flow5 * (-1.25))
+        warp2_4 = self.warp(c24, up_flow5 * 1.25)
+        bicorr4 = self.bilateral_corr4(c14, c24, up_flow5 * 1.25)
         bicorr4 = self.leakyRELU(bicorr4)
         x = torch.cat((bicorr4, warp1_4, warp2_4, up_flow5, up_feat5), 1)
         x = torch.cat((self.conv4_0(x), x), 1)
@@ -208,9 +211,9 @@ class SBMENet(nn.Module):
         up_flow4 = self.deconv4(flow4)
         up_feat4 = self.upfeat4(x)
 
-        warp1_3 = self.warp(c13, up_flow4* (-2.5))
-        warp2_3 = self.warp(c23, up_flow4* 2.5)
-        bicorr3 = self.bilateral_corr3(c13,c23,up_flow4*2.5)
+        warp1_3 = self.warp(c13, up_flow4 * (-2.5))
+        warp2_3 = self.warp(c23, up_flow4 * 2.5)
+        bicorr3 = self.bilateral_corr3(c13, c23, up_flow4 * 2.5)
         # temp_time += check_time() - cur_time
         bicorr3 = self.leakyRELU(bicorr3)
         x = torch.cat((bicorr3, warp1_3, warp2_3, up_flow4, up_feat4), 1)
@@ -223,9 +226,9 @@ class SBMENet(nn.Module):
         up_flow3 = self.deconv3(flow3)
         up_feat3 = self.upfeat3(x)
 
-        warp1_2 = self.warp(c12, up_flow3* (-5.0))
-        warp2_2 = self.warp(c22, up_flow3* 5.0)
-        bicorr2 = self.bilateral_corr2(c12,c22, up_flow3* 5.0)
+        warp1_2 = self.warp(c12, up_flow3 * (-5.0))
+        warp2_2 = self.warp(c22, up_flow3 * 5.0)
+        bicorr2 = self.bilateral_corr2(c12, c22, up_flow3 * 5.0)
         bicorr2 = self.leakyRELU(bicorr2)
         x = torch.cat((bicorr2, warp1_2, warp2_2, up_flow3, up_feat3), 1)
         x = torch.cat((self.conv2_0(x), x), 1)
@@ -239,4 +242,3 @@ class SBMENet(nn.Module):
         flow2 = flow2 + self.dc_conv7(self.dc_conv6(self.dc_conv5(x)))
 
         return flow2, flow3, flow4, flow5, flow6
-        

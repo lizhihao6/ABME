@@ -1,7 +1,8 @@
-import torch
-from torch.nn.modules.module import Module
-from torch.autograd import Function
 import correlation_cuda
+import torch
+from torch.autograd import Function
+from torch.nn.modules.module import Module
+
 
 class CorrelationFunction(Function):
 
@@ -16,7 +17,7 @@ class CorrelationFunction(Function):
     #     # self.out_channel = ((max_displacement/stride2)*2 + 1) * ((max_displacement/stride2)*2 + 1)
 
     @staticmethod
-    def forward(ctx, input1, input2, pad_size, kernel_size, max_displacement,stride1, stride2, corr_multiply):
+    def forward(ctx, input1, input2, pad_size, kernel_size, max_displacement, stride1, stride2, corr_multiply):
         ctx.save_for_backward(input1, input2)
         ctx.pad_size = pad_size
         ctx.kernel_size = kernel_size
@@ -47,7 +48,8 @@ class CorrelationFunction(Function):
             grad_input2 = input2.new()
 
             correlation_cuda.backward(input1, input2, rbot1, rbot2, grad_output, grad_input1, grad_input2,
-                                      ctx.pad_size, ctx.kernel_size, ctx.max_displacement, ctx.stride1, ctx.stride2, ctx.corr_multiply)
+                                      ctx.pad_size, ctx.kernel_size, ctx.max_displacement, ctx.stride1, ctx.stride2,
+                                      ctx.corr_multiply)
 
         return grad_input1, grad_input2, None, None, None, None, None, None
 
@@ -64,11 +66,10 @@ class Correlation(Module):
 
     # @staticmethod
     def forward(self, input1, input2):
-
         input1 = input1.contiguous()
         input2 = input2.contiguous()
         # result = CorrelationFunction(self.pad_size, self.kernel_size, self.max_displacement,self.stride1, self.stride2, self.corr_multiply)(input1, input2)
-        result = CorrelationFunction.apply(input1, input2, self.pad_size, self.kernel_size, self.max_displacement,self.stride1, self.stride2, self.corr_multiply)
+        result = CorrelationFunction.apply(input1, input2, self.pad_size, self.kernel_size, self.max_displacement,
+                                           self.stride1, self.stride2, self.corr_multiply)
 
         return result
-
