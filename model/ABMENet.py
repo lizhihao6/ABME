@@ -105,6 +105,7 @@ class ABME(torch.nn.Module):
     @staticmethod
     def _im_to_tensor(im):
         tensor = torch.from_numpy(im.astype(np.float32)/255.).permute([2, 0, 1]).unsqueeze(0)
+        return tensor
 
     @staticmethod
     def _tensor_to_im(tensor):
