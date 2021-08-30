@@ -15,7 +15,7 @@ class DynFilter(nn.Module):
         if DDP:
             self.register_buffer('filter_localexpand', torch.FloatTensor(filter_localexpand_np))  # for DDP model
         else:
-            self.filter_localexpand = torch.FloatTensor(filter_localexpand_np).cuda()  # for single model
+            self.filter_localexpand = torch.FloatTensor(filter_localexpand_np)  # for single model
 
     def forward(self, x, filter):
         x_localexpand = []
