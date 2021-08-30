@@ -104,11 +104,11 @@ class ABME(torch.nn.Module):
     
     @staticmethod
     def _im_to_tensor(im):
-        tensor = torch.from_numpy(im.astype(np.float32)/255.).transpose([2, 0, 1]).unsqueeze(0)
+        tensor = torch.from_numpy(im.astype(np.float32)/255.).permute([2, 0, 1]).unsqueeze(0)
 
     @staticmethod
     def _tensor_to_im(tensor):
-        im = tensor.detach().cpu()[0].transpose([1, 2, 0]).numpy()
+        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()
         return np.clip(im, 0, 255.).astype(np.uint8)
 
     def x8(self, im0, im8):
