@@ -39,7 +39,7 @@ class ABME(torch.nn.Module):
         SBMNet.eval()
         ABMNet.eval()
         SynNet.eval()
-        self.SBMNet, self.ABMNet, self.SynNet = SBMENet.to(device), ABMNet.to(device), SynNet.to(device)
+        self.SBMNet, self.ABMNet, self.SynNet = SBMNet.to(device), ABMNet.to(device), SynNet.to(device)
         self.device = device
 
     def forward(self, frame1, frame3):
