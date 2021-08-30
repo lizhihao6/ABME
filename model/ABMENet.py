@@ -74,8 +74,8 @@ class ABME(torch.nn.Module):
             ABM_fw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame3_), dim=1), SBM, Z_.exp())
 
             SBM_ = F.interpolate(SBM, (H, W), mode='bilinear') * 20.0
-            ABM_fw = F.interpolate(self.ABM_fw, (H, W), mode='bilinear') * 20.0
-            ABM_bw = F.interpolate(self.ABM_bw, (H, W), mode='bilinear') * 20.0
+            ABM_fw = F.interpolate(ABM_fw, (H, W), mode='bilinear') * 20.0
+            ABM_bw = F.interpolate(ABM_bw, (H, W), mode='bilinear') * 20.0
 
             SBM_[:, 0, :, :] *= W / float(W_)
             SBM_[:, 1, :, :] *= H / float(H_)

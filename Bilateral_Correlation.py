@@ -1,3 +1,4 @@
+from model.SynthesisNet import Feature_Pyramid
 import torch
 import torch.nn as nn
 
@@ -71,10 +72,11 @@ class BilateralCorrelation(nn.Module):
         :param time(float): intermediate time step from 0 to 1 (default: 0.5 [half])
         :return BC: (N,(2d+1)^2,H,W)
         '''
+        self.d = self.d.to(feature1.device)
         feature1 = self.L2normalize(feature1)
         feature2 = self.L2normalize(feature2)
 
-        if torch.equal(self.grid, torch.ones(1).cuda()):
+        if torch.equal(self.grid, torch.ones(1).to(self.grid.device)):
             self.grid = torch.autograd.Variable(self.UniformGrid(SBM))
 
         if SBM.size(2) != self.grid.size(2) or SBM.size(3) != self.grid.size(3):
