@@ -134,16 +134,16 @@ def test(args):
             if iteration % 100 == 0:
                 if args.is_save:
                     print('[%s:%s](\033[1;32;1m%d\033[0m/%d) is finished and saved' % (
-                    args.name, args.Dataset, iteration, len(validation_data_loader)))
+                        args.name, args.Dataset, iteration, len(validation_data_loader)))
                 else:
                     print('[%s:%s](\033[1;32;1m%d\033[0m/%d) is finished' % (
-                    args.name, args.Dataset, iteration, len(validation_data_loader)))
+                        args.name, args.Dataset, iteration, len(validation_data_loader)))
 
     print('[%s:%s] avg. PSNR: %6f' % (args.name, args.Dataset, avg_psnr / len(validation_data_loader)))
 
     with open('%s_test_log.txt' % args.name, 'a') as txt:
         txt.write('[%s:%s:%s:%s] avg.PSNR: %6f\n' % (
-        args.Dataset, args.SBMNet_ckpt, args.ABMNet_ckpt, args.SynNet_ckpt, avg_psnr / len(validation_data_loader)))
+            args.Dataset, args.SBMNet_ckpt, args.ABMNet_ckpt, args.SynNet_ckpt, avg_psnr / len(validation_data_loader)))
 
 
 def test_X4K1000FPS(args):
@@ -272,7 +272,7 @@ def test_X4K1000FPS(args):
                 seq_dict[mul[1]] = I2
 
             print('[%s:X4K1000FPS](\033[1;32;1m%d\033[0m/%d) is finished' % (
-            args.name, iteration, len(validation_data_loader)))
+                args.name, iteration, len(validation_data_loader)))
 
 
 if __name__ == '__main__':

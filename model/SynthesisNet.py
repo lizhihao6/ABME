@@ -21,7 +21,8 @@ class DynFilter(nn.Module):
         x_localexpand = []
 
         for c in range(x.size(1)):
-            x_localexpand.append(F.conv2d(x[:, c:c + 1, :, :], self.filter_localexpand.to(x.device), padding=self.padding))
+            x_localexpand.append(
+                F.conv2d(x[:, c:c + 1, :, :], self.filter_localexpand.to(x.device), padding=self.padding))
 
         x_localexpand = torch.cat(x_localexpand, dim=1)
         x = torch.sum(torch.mul(x_localexpand, filter), dim=1).unsqueeze(1)

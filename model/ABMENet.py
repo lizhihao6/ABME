@@ -1,14 +1,14 @@
 from math import ceil
-import numpy as np
 
+import numpy as np
 import torch
 import torch.nn.functional as F
 from torch.backends import cudnn
 
-from .SBMNet import SBMENet
-from .ABMNet import ABMRNet
-from .SynthesisNet import SynthesisNet
 from utils import warp
+from .ABMNet import ABMRNet
+from .SBMNet import SBMENet
+from .SynthesisNet import SynthesisNet
 
 cudnn.benchmark = True
 import argparse
@@ -101,10 +101,10 @@ class ABME(torch.nn.Module):
             result = self.SynNet(Syn_inputs)
             result = F.interpolate(result, (H, W), mode='bicubic')
             return result
-    
+
     @staticmethod
     def _im_to_tensor(im):
-        tensor = torch.from_numpy(im.astype(np.float32)/255.).permute([2, 0, 1]).unsqueeze(0)
+        tensor = torch.from_numpy(im.astype(np.float32) / 255.).permute([2, 0, 1]).unsqueeze(0)
         return tensor
 
     @staticmethod
@@ -123,7 +123,7 @@ class ABME(torch.nn.Module):
             frame3 = self.forward(frame2, frame4)
             frame5 = self.forward(frame4, frame6)
             frame7 = self.forward(frame6, frame8)
-        ims = [im0] + [ABME._tensor_to_im(f) for f in [frame1, frame2, frame3, frame4, frame5, frame6, frame7]] + [im8]
+        ims = [im0] + [ABME._tensor_to_im(f) for f in [frame1, frame2, frame3, frame4, frame5, frame6, frame7]]
         del frame0
         del frame1
         del frame2

@@ -1,4 +1,3 @@
-from model.SynthesisNet import Feature_Pyramid
 import torch
 import torch.nn as nn
 
