@@ -1,4 +1,5 @@
 from math import ceil
+import numpy as np
 
 import torch
 import torch.nn.functional as F
@@ -39,7 +40,7 @@ class ABME(torch.nn.Module):
         SBMNet.eval()
         ABMNet.eval()
         SynNet.eval()
-        self.SBMNet, self.ABMNet, self.SynNet = SBMENet.to(device), ABMNet.to(device), SynNet.to(device)
+        self.SBMNet, self.ABMNet, self.SynNet = SBMNet.to(device), ABMNet.to(device), SynNet.to(device)
         self.device = device
 
     def forward(self, frame1, frame3):
@@ -73,8 +74,8 @@ class ABME(torch.nn.Module):
             ABM_fw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame3_), dim=1), SBM, Z_.exp())
 
             SBM_ = F.interpolate(SBM, (H, W), mode='bilinear') * 20.0
-            ABM_fw = F.interpolate(self.ABM_fw, (H, W), mode='bilinear') * 20.0
-            ABM_bw = F.interpolate(self.ABM_bw, (H, W), mode='bilinear') * 20.0
+            ABM_fw = F.interpolate(ABM_fw, (H, W), mode='bilinear') * 20.0
+            ABM_bw = F.interpolate(ABM_bw, (H, W), mode='bilinear') * 20.0
 
             SBM_[:, 0, :, :] *= W / float(W_)
             SBM_[:, 1, :, :] *= H / float(H_)
@@ -100,3 +101,37 @@ class ABME(torch.nn.Module):
             result = self.SynNet(Syn_inputs)
             result = F.interpolate(result, (H, W), mode='bicubic')
             return result
+    
+    @staticmethod
+    def _im_to_tensor(im):
+        tensor = torch.from_numpy(im.astype(np.float32)/255.).permute([2, 0, 1]).unsqueeze(0)
+        return tensor
+
+    @staticmethod
+    def _tensor_to_im(tensor):
+        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()
+        return np.clip(im, 0, 255.).astype(np.uint8)
+
+    def x8(self, im0, im8):
+        frame0, frame8 = ABME._im_to_tensor(im0), ABME._im_to_tensor(im8)
+        with torch.no_grad():
+            frame0, frame8 = frame0.to(self.device), frame8.to(self.device)
+            frame4 = self.forward(frame0, frame8)
+            frame2 = self.forward(frame0, frame4)
+            frame6 = self.forward(frame4, frame8)
+            frame1 = self.forward(frame0, frame2)
+            frame3 = self.forward(frame2, frame4)
+            frame5 = self.forward(frame4, frame6)
+            frame7 = self.forward(frame6, frame8)
+        ims = [im0] + [ABME._tensor_to_im(f) for f in [frame1, frame2, frame3, frame4, frame5, frame6, frame7]] + [im8]
+        del frame0
+        del frame1
+        del frame2
+        del frame3
+        del frame4
+        del frame5
+        del frame6
+        del frame7
+        del frame8
+        torch.cuda.empty_cache()
+        return ims
