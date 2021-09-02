@@ -32,11 +32,11 @@ def dist_x8(ims):
 
 
 if __name__ == '__main__':
-    dirs = [os.path.join(d, "image_left") for d in os.listdir(PATH) if os.path.isdir(d)]
+    dirs = [os.path.join(PATH, d, "image_left") for d in os.listdir(PATH) if os.path.isdir(os.path.join(PATH, d))]
     dirs += [d.replace("left", "right") for d in dirs]
     ims = []
     for d in dirs:
-        im_ids = sorted(int(float(s.split("/")[-1])) for s in os.listdir(d))
+        im_ids = sorted(int(float(s[:-4])) for s in os.listdir(d))
         if not os.path.exists(d + "_x8"):
             os.makedirs(d + "_x8")
         for i in im_ids[:-1]:
