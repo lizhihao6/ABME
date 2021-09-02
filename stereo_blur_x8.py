@@ -40,6 +40,6 @@ if __name__ == '__main__':
         if not os.path.exists(d + "_x8"):
             os.makedirs(d + "_x8")
         for i in im_ids[:-1]:
-            ims.append({"input": (os.path.join(d, "%04d" % i), os.path.join(d, "%4d" % (i + 1))),
-                        "output": [os.path.join(d + "_x8", "%05d" % _i) for _i in range(i * 8, i * 8 + 8)]})
+            ims.append({"input": (os.path.join(d, "%04d.png" % i), os.path.join(d, "%4d" % (i + 1))),
+                        "output": [os.path.join(d + "_x8", "%05d.png" % _i) for _i in range(i * 8, i * 8 + 8)]})
     dist_x8(ims)
