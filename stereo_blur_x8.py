@@ -19,7 +19,7 @@ def x8(ims):
     iter = trange(start_id, stop_id) if start_id == 0 else range(start_id, stop_id)
     for i in iter:
         input, output = ims[i]["input"], ims[i]["output"]
-        for p, im in zip(output, abme.x8(imread(input[0]), input[1])):
+        for p, im in zip(output, abme.x8(imread(input[0]), imread(input[1]))):
             imwrite(p, im)
 
 
