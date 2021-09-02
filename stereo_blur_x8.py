@@ -7,7 +7,7 @@ from tqdm import trange
 
 from model.ABMENet import ABME
 
-PATH = "/data/stereo_blur_data"
+PATH = "/data/stereo_blur"
 GPU_NUM = 8
 
 
