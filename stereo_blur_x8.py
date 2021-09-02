@@ -27,7 +27,7 @@ def dist_x8(ims):
     num_cores = GPU_NUM
     print("num cores: {}".format(num_cores))
     pool = mp.Pool(num_cores)
-    results = [pool.apply_async(x8, args=(ims))]
+    results = [pool.apply_async(x8, args=ims)]
     results = [p.get() for p in results]
 
 
