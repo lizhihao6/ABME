@@ -118,7 +118,7 @@ class ABME(torch.nn.Module):
 
     @staticmethod
     def _tensor_to_im(tensor):
-        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()
+        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()*255.
         return np.clip(im, 0, 255.).astype(np.uint8)
 
     def xVFI(self, im0, imx, frame_num=16):
@@ -127,7 +127,7 @@ class ABME(torch.nn.Module):
             frame0, framex = frame0.to(self.device), framex.to(self.device)
             frames = [frame0] + [None for _ in range(frame_num - 1)] + [framex]
             idx = [0, frame_num]
-            while (frames[1] == None):
+            while (frames[1] is None):
                 _idx = []
                 for i in range(len(idx) - 1):
                     input_idx0, input_idx1 = idx[i], idx[i + 1]
@@ -136,7 +136,7 @@ class ABME(torch.nn.Module):
                                                    frames[input_idx1])
                     _idx.append(tar_idx)
                 idx = sorted(idx + _idx)
-        ims = [im0] + [ABME._tensor_to_im(f) for f in frames]
+        ims = [im0] + [ABME._tensor_to_im(f) for f in frames[1:-1]]
         for item in range(len(frames) - 1, -1, -1):
             del frames[item]
         torch.cuda.empty_cache()
