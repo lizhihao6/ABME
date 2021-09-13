@@ -11,7 +11,7 @@ PATH = "/data/stereo_blur"
 GPU_NUM = 8
 
 
-def x8(ims):
+def x16(ims):
     mp_idx = os.getpid() % GPU_NUM
     step = int(np.ceil(float(len(ims)) / GPU_NUM))
     start_id, stop_id = step * mp_idx, min(step * mp_idx + step, len(ims))
@@ -19,15 +19,15 @@ def x8(ims):
     iter = trange(start_id, stop_id) if start_id == 0 else range(start_id, stop_id)
     for i in iter:
         input, output = ims[i]["input"], ims[i]["output"]
-        for p, im in zip(output, abme.x8(imread(input[0]), imread(input[1]))):
+        for p, im in zip(output, abme.xVFI(imread(input[0]), imread(input[1], frame_num=16))):
             imwrite(p, im)
 
 
-def dist_x8(ims):
+def dist_x16(ims):
     num_cores = GPU_NUM
     print("num cores: {}".format(num_cores))
     pool = mp.Pool(num_cores)
-    results = [pool.apply_async(x8, args=(ims,))]
+    results = [pool.apply_async(x16, args=(ims,))]
     results = [p.get() for p in results]
 
 
@@ -37,9 +37,9 @@ if __name__ == '__main__':
     ims = []
     for d in dirs:
         im_ids = sorted(int(float(s[:-4])) for s in os.listdir(d))
-        if not os.path.exists(d + "_x8"):
-            os.makedirs(d + "_x8")
+        if not os.path.exists(d + "_x16"):
+            os.makedirs(d + "_x16")
         for i in im_ids[:-1]:
             ims.append({"input": (os.path.join(d, "%04d.png" % i), os.path.join(d, "%04d.png" % (i + 1))),
-                        "output": [os.path.join(d + "_x8", "%05d.png" % _i) for _i in range(i * 8, i * 8 + 8)]})
-    dist_x8(ims)
+                        "output": [os.path.join(d + "_x16", "%05d.png" % _i) for _i in range(i * 8, i * 8 + 8)]})
+    dist_x16(ims)

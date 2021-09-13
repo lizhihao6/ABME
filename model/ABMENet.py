@@ -19,16 +19,18 @@ args.DDP = False
 
 
 class ABME(torch.nn.Module):
-
     def __init__(self, device):
         super(ABME, self).__init__()
         SBMNet = SBMENet()
         ABMNet = ABMRNet()
         SynNet = SynthesisNet(args)
 
-        SBMNet.load_state_dict(torch.load('Best/SBME_ckpt.pth', map_location='cpu'))
-        ABMNet.load_state_dict(torch.load('Best/ABMR_ckpt.pth', map_location='cpu'))
-        SynNet.load_state_dict(torch.load('Best/SynNet_ckpt.pth', map_location='cpu'))
+        SBMNet.load_state_dict(
+            torch.load('Best/SBME_ckpt.pth', map_location='cpu'))
+        ABMNet.load_state_dict(
+            torch.load('Best/ABMR_ckpt.pth', map_location='cpu'))
+        SynNet.load_state_dict(
+            torch.load('Best/SynNet_ckpt.pth', map_location='cpu'))
 
         for param in SBMNet.parameters():
             param.requires_grad = False
@@ -40,7 +42,8 @@ class ABME(torch.nn.Module):
         SBMNet.eval()
         ABMNet.eval()
         SynNet.eval()
-        self.SBMNet, self.ABMNet, self.SynNet = SBMNet.to(device), ABMNet.to(device), SynNet.to(device)
+        self.SBMNet, self.ABMNet, self.SynNet = SBMNet.to(device), ABMNet.to(
+            device), SynNet.to(device)
         self.device = device
 
     def forward(self, frame1, frame3):
@@ -65,13 +68,17 @@ class ABME(torch.nn.Module):
             frame2_3, Mask2_3 = warp(frame3_, SBM_, return_mask=True)
 
             frame2_Anchor_ = (frame2_1 + frame2_3) / 2
-            frame2_Anchor = frame2_Anchor_ + 0.5 * (frame2_3 * (1 - Mask2_1) + frame2_1 * (1 - Mask2_3))
+            frame2_Anchor = frame2_Anchor_ + 0.5 * (frame2_3 *
+                                                    (1 - Mask2_1) + frame2_1 *
+                                                    (1 - Mask2_3))
 
             Z = F.l1_loss(frame2_3, frame2_1, reduction='none').mean(1, True)
             Z_ = F.interpolate(Z, scale_factor=0.25, mode='bilinear') * (-20.0)
 
-            ABM_bw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame1_), dim=1), SBM * (-1), Z_.exp())
-            ABM_fw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame3_), dim=1), SBM, Z_.exp())
+            ABM_bw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame1_), dim=1),
+                                    SBM * (-1), Z_.exp())
+            ABM_fw, _ = self.ABMNet(torch.cat((frame2_Anchor, frame3_), dim=1),
+                                    SBM, Z_.exp())
 
             SBM_ = F.interpolate(SBM, (H, W), mode='bilinear') * 20.0
             ABM_fw = F.interpolate(ABM_fw, (H, W), mode='bilinear') * 20.0
@@ -88,7 +95,8 @@ class ABME(torch.nn.Module):
             H_ = int(ceil(H / divisor) * divisor)
             W_ = int(ceil(W / divisor) * divisor)
 
-            Syn_inputs = torch.cat((frame1, frame3, SBM_, ABM_fw, ABM_bw), dim=1)
+            Syn_inputs = torch.cat((frame1, frame3, SBM_, ABM_fw, ABM_bw),
+                                   dim=1)
 
             Syn_inputs = F.interpolate(Syn_inputs, (H_, W_), mode='bilinear')
             Syn_inputs[:, 6, :, :] *= float(W_) / W
@@ -104,7 +112,8 @@ class ABME(torch.nn.Module):
 
     @staticmethod
     def _im_to_tensor(im):
-        tensor = torch.from_numpy(im.astype(np.float32) / 255.).permute([2, 0, 1]).unsqueeze(0)
+        tensor = torch.from_numpy(im.astype(np.float32) / 255.).permute(
+            [2, 0, 1]).unsqueeze(0)
         return tensor
 
     @staticmethod
@@ -112,26 +121,23 @@ class ABME(torch.nn.Module):
         im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()
         return np.clip(im, 0, 255.).astype(np.uint8)
 
-    def x8(self, im0, im8):
-        frame0, frame8 = ABME._im_to_tensor(im0), ABME._im_to_tensor(im8)
+    def xVFI(self, im0, imx, frame_num=16):
+        frame0, framex = ABME._im_to_tensor(im0), ABME._im_to_tensor(imx)
         with torch.no_grad():
-            frame0, frame8 = frame0.to(self.device), frame8.to(self.device)
-            frame4 = self.forward(frame0, frame8)
-            frame2 = self.forward(frame0, frame4)
-            frame6 = self.forward(frame4, frame8)
-            frame1 = self.forward(frame0, frame2)
-            frame3 = self.forward(frame2, frame4)
-            frame5 = self.forward(frame4, frame6)
-            frame7 = self.forward(frame6, frame8)
-        ims = [im0] + [ABME._tensor_to_im(f) for f in [frame1, frame2, frame3, frame4, frame5, frame6, frame7]]
-        del frame0
-        del frame1
-        del frame2
-        del frame3
-        del frame4
-        del frame5
-        del frame6
-        del frame7
-        del frame8
+            frame0, framex = frame0.to(self.device), framex.to(self.device)
+            frames = [frame0] + [None for _ in range(frame_num - 1)] + [framex]
+            idx = [0, frame_num]
+            while (frames[1] == None):
+                _idx = []
+                for i in range(len(idx) - 1):
+                    tar_idx = (idx[i] | +idx[i + 1]) / 2
+                    frames[tar_idx] = self.forward(frames[idx],
+                                                   frames[idx + 1])
+                    _idx.append(tar_idx)
+                idx = sorted(idx + _idx)
+        ims = [im0] + [ABME._tensor_to_im(f) for f in frames]
+        for item in range(len(frames) - 1, -1, -1):
+            del frames[item]
         torch.cuda.empty_cache()
+
         return ims
