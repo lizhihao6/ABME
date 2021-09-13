@@ -130,9 +130,10 @@ class ABME(torch.nn.Module):
             while (frames[1] == None):
                 _idx = []
                 for i in range(len(idx) - 1):
-                    input_idx0, input_idx1 = idx[i], idx[i+1]
-                    tar_idx = (input_idx0, input_idx1)/ 2
-                    frames[tar_idx] = self.forward(frames[input_idx0], frames[input_idx1])
+                    input_idx0, input_idx1 = idx[i], idx[i + 1]
+                    tar_idx = (input_idx0 + input_idx1) / 2
+                    frames[tar_idx] = self.forward(frames[input_idx0],
+                                                   frames[input_idx1])
                     _idx.append(tar_idx)
                 idx = sorted(idx + _idx)
         ims = [im0] + [ABME._tensor_to_im(f) for f in frames]
