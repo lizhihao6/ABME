@@ -136,7 +136,7 @@ class ABME(torch.nn.Module):
                                                    frames[input_idx1])
                     _idx.append(tar_idx)
                 idx = sorted(idx + _idx)
-        ims = [im0] + [ABME._tensor_to_im(f) for f in frames[1:-1]]
+        ims = [ABME._tensor_to_im(f) for f in frames[:frame_num]]
         for item in range(len(frames) - 1, -1, -1):
             del frames[item]
         torch.cuda.empty_cache()
