@@ -118,7 +118,7 @@ class ABME(torch.nn.Module):
 
     @staticmethod
     def _tensor_to_im(tensor):
-        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy()*255.
+        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy() * 255.
         return np.clip(im, 0, 255.).astype(np.uint8)
 
     def xVFI(self, im0, imx, frame_num=16):
