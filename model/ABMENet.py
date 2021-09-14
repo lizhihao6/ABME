@@ -1,7 +1,6 @@
 from math import ceil
 
 import numpy as np
-from numpy.lib.arraysetops import isin
 import torch
 import torch.nn.functional as F
 from torch.backends import cudnn
@@ -140,13 +139,13 @@ class ABME(torch.nn.Module):
                                                            2).numpy()
         batch_ims = np.clip(batch_ims, 0, 255.).astype(np.uint8)
         batch_ims = np.split(batch_ims, batch_ims.shape[1], axis=1)
-        ims = [np.split(b, b.shape[0], axis=0) for b in batch_ims]
+        ims = [[im[0] for im in np.split(b[:, 0], b.shape[0], axis=0)] for b in batch_ims]
         return ims
 
     def xVFI(
-        self,
-        batch_im0,
-        batch_imx,
+            self,
+            batch_im0,
+            batch_imx,
     ):
         assert isinstance(batch_im0, list)
         with torch.no_grad():
@@ -156,7 +155,7 @@ class ABME(torch.nn.Module):
             ]).to(self.device)
             batch_frames[0], batch_frames[-1] = ABME._ims_to_tensor(
                 batch_im0).to(self.device), ABME._ims_to_tensor(batch_imx).to(
-                    self.device)
+                self.device)
             for (input_idx0, input_idx1, tar_idx) in self.run_idx:
                 batch_frames[tar_idx] = self.forward(batch_frames[input_idx0],
                                                      batch_frames[input_idx1])

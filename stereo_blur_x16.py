@@ -10,32 +10,67 @@ from model.ABMENet import ABME
 
 PATH = "/data/stereo_blur"
 GPU_NUM = 8
+BATCH_SIZE = 2
+
+
+def son_imread(idx, path):
+    return idx, imread(path)
+
+
+def dist_imread(pool, paths):
+    results = [
+        pool.apply_async(son_imread, args=(i, p)) for i, p in enumerate(paths)
+    ]
+    results = [p.get() for p in results]
+    return [r[1] for r in sorted(results, key=lambda x: x[0])]
+
+
+def dist_imwrite(pool, paths, ims):
+    results = [
+        pool.apply_async(imwrite, args=(p, im)) for p, im in zip(paths, ims)
+    ]
+    results = [p.get() for p in results]
 
 
 def x16(ims):
+    num_cores = int(mp.cpu_count()) // GPU_NUM
+    assert num_cores > 0
+    print("num cores: {}".format(num_cores))
+    pool = mp.Pool(num_cores)
+
     mp_idx = os.getpid() % GPU_NUM
     step = int(np.ceil(float(len(ims)) / GPU_NUM))
     start_id, stop_id = step * mp_idx, min(step * mp_idx + step, len(ims))
-    abme = ABME("cuda:{}".format(mp_idx))
-    iter = trange(start_id, stop_id) if start_id == 0 else range(
-        start_id, stop_id)
+    abme = ABME("cuda:{}".format(mp_idx), frame_num=16)
+    iter = trange(start_id, stop_id, BATCH_SIZE) if start_id == 0 else range(
+        start_id, stop_id, BATCH_SIZE)
     for i in iter:
         if start_id == 0:
             print("{}/{}".format(i, stop_id), flush=True)
-        input, output = ims[i]["input"], ims[i]["output"]
-        copyfile(input[0], output[0])
-        for p, im in zip(
-                output[1:],
-                abme.xVFI(imread(input[0]), imread(input[1]),
-                          frame_num=16)[1:]):
-            imwrite(p, im)
+        batch_im0 = [ims[i + j]["input"][0] for j in range(BATCH_SIZE)]
+        batch_im16 = [ims[i + j]["input"][1] for j in range(BATCH_SIZE)]
+        batch_outputs = [ims[i + j]["output"] for j in range(BATCH_SIZE)]
+        for b in range(BATCH_SIZE):
+            copyfile(batch_im0[b], batch_outputs[b][0])
+        # batch_im0 = dist_imread(pool, batch_im0)
+        # batch_im16 = dist_imread(pool, batch_im16)
+        batch_im0, batch_im16 = [imread(p) for p in batch_im0
+                                 ], [imread(p) for p in batch_im16]
+        for b, ims in enumerate(abme.xVFI(batch_im0, batch_im16)):
+            dist_imwrite(pool, batch_outputs[b][1:], ims[1:])
+    for i in range((stop_id - start_id) // BATCH_SIZE * BATCH_SIZE + start_id,
+                   stop_id):
+        batch_im0, batch_im16 = [imread(ims[i]["input"][0])
+                                 ], [imread(ims[i]["input"][1])]
+        ims = abme.xVFI(batch_im0, batch_im16)[0]
+        dist_imwrite(pool, [ims[i]["output"]], ims)
 
 
 def dist_x16(ims):
     num_cores = GPU_NUM
     print("num cores: {}".format(num_cores))
     pool = mp.Pool(num_cores)
-    results = [pool.apply_async(x16, args=(ims, ))]
+    results = [pool.apply_async(x16, args=(ims,))]
     results = [p.get() for p in results]
 
 

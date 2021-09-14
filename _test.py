@@ -12,7 +12,7 @@ if __name__ == "__main__":
     im0, im16 = imread("images/im1.png"), imread("images/im3.png")
     if not os.path.exists(SAVE_DIR):
         os.makedirs(SAVE_DIR)
-    for i, im in enumerate(abme.xVFI([im0], [im16])):
-        imwrite(os.path.join(SAVE_DIR, "{}.png".format(i)), im[0])
+    for i, im in enumerate(abme.xVFI([im0], [im16])[0]):
+        imwrite(os.path.join(SAVE_DIR, "{}.png".format(i)), im)
     end = time.clock()
     print("VFI time: {}".format(end - start))
