@@ -1,6 +1,7 @@
 from math import ceil
 
 import numpy as np
+from numpy.lib.arraysetops import isin
 import torch
 import torch.nn.functional as F
 from torch.backends import cudnn
@@ -19,8 +20,22 @@ args.DDP = False
 
 
 class ABME(torch.nn.Module):
-    def __init__(self, device):
+    def __init__(self, device, frame_num=16):
         super(ABME, self).__init__()
+
+        self.frame_num = frame_num
+        idx = [0, frame_num]
+        run_idx = []
+        while (idx[1] != 1):
+            _idx = []
+            for i in range(len(idx) - 1):
+                input_idx0, input_idx1 = idx[i], idx[i + 1]
+                tar_idx = (input_idx0 + input_idx1) // 2
+                run_idx.append((input_idx0, input_idx1, tar_idx))
+                _idx.append(tar_idx)
+            idx = sorted(idx + _idx)
+        self.run_idx = run_idx
+
         SBMNet = SBMENet()
         ABMNet = ABMRNet()
         SynNet = SynthesisNet(args)
@@ -111,37 +126,41 @@ class ABME(torch.nn.Module):
             return result
 
     @staticmethod
-    def _im_to_tensor(im):
-        tensor = torch.from_numpy(im.astype(np.float32) / 255.).permute(
-            [2, 0, 1]).unsqueeze(0)
-        return tensor
+    def _ims_to_tensor(ims):
+        assert isinstance(ims, list)
+        ims = np.concatenate([im[np.newaxis, ...] for im in ims], axis=0)
+        batch_ims = torch.from_numpy(ims.astype(np.float32) / 255.).permute(
+            [0, 3, 1, 2])
+        return batch_ims
 
     @staticmethod
-    def _tensor_to_im(tensor):
-        im = tensor.detach().cpu()[0].permute([1, 2, 0]).numpy() * 255.
-        return np.clip(im, 0, 255.).astype(np.uint8)
+    def _tensor_to_ims(tensors):
+        assert len(tensors.shape) == 5  # [frame_num+1, batch, c, h, w]
+        batch_ims = (tensors * 255).detach().cpu().permute(0, 1, 3, 4,
+                                                           2).numpy()
+        batch_ims = np.clip(batch_ims, 0, 255.).astype(np.uint8)
+        batch_ims = np.split(batch_ims, batch_ims.shape[1], axis=1)
+        ims = [np.split(b, b.shape[0], axis=0) for b in batch_ims]
+        return ims
 
-    def xVFI(self, im0, imx, frame_num=16):
-        frame0, framex = ABME._im_to_tensor(im0), ABME._im_to_tensor(imx)
+    def xVFI(
+        self,
+        batch_im0,
+        batch_imx,
+    ):
+        assert isinstance(batch_im0, list)
         with torch.no_grad():
-            frame0, framex = frame0.to(self.device), framex.to(self.device)
-            frames = [frame0] + [None for _ in range(frame_num - 1)] + [framex]
-            idx = [0, frame_num]
-            run_idx = []
-            while (idx[1] != 1):
-                _idx = []
-                for i in range(len(idx) - 1):
-                    input_idx0, input_idx1 = idx[i], idx[i + 1]
-                    tar_idx = (input_idx0 + input_idx1) // 2
-                    run_idx.append((input_idx0, input_idx1, tar_idx))
-                    _idx.append(tar_idx)
-                idx = sorted(idx + _idx)
-        for i, (input_idx0, input_idx1, tar_idx) in enumerate(run_idx):
-            frames[tar_idx] = self.forward(frames[input_idx0],
-                                           frames[input_idx1])
-        ims = [im0] + [ABME._tensor_to_im(f) for f in frames[1:frame_num]]
-        # for item in range(len(frames) - 1, -1, -1):
-        # del frames[item]
-        # torch.cuda.empty_cache()
+            batch_frames = torch.zeros([
+                self.frame_num + 1,
+                len(batch_im0), 3, batch_im0[0].shape[0], batch_im0[0].shape[1]
+            ]).to(self.device)
+            batch_frames[0], batch_frames[-1] = ABME._ims_to_tensor(
+                batch_im0).to(self.device), ABME._ims_to_tensor(batch_imx).to(
+                    self.device)
+            for (input_idx0, input_idx1, tar_idx) in self.run_idx:
+                batch_frames[tar_idx] = self.forward(batch_frames[input_idx0],
+                                                     batch_frames[input_idx1])
+
+            ims = ABME._tensor_to_ims(batch_frames[:-1])
 
         return ims
