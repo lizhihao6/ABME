@@ -127,18 +127,20 @@ class ABME(torch.nn.Module):
             frame0, framex = frame0.to(self.device), framex.to(self.device)
             frames = [frame0] + [None for _ in range(frame_num - 1)] + [framex]
             idx = [0, frame_num]
-            while (frames[1] is None):
+            run_idx = []
+            while(idx[1] != 1):
                 _idx = []
-                for i in range(len(idx) - 1):
+                for i in range(len(idx)-1):
                     input_idx0, input_idx1 = idx[i], idx[i + 1]
                     tar_idx = (input_idx0 + input_idx1) // 2
-                    frames[tar_idx] = self.forward(frames[input_idx0],
-                                                   frames[input_idx1])
+                    run_idx.append((input_idx0, input_idx1, tar_idx))
                     _idx.append(tar_idx)
                 idx = sorted(idx + _idx)
-        ims = [ABME._tensor_to_im(f) for f in frames[:frame_num]]
-        for item in range(len(frames) - 1, -1, -1):
-            del frames[item]
-        torch.cuda.empty_cache()
+        for i, (input_idx0, input_idx1, tar_idx) in enumerate(run_idx):
+            frames[tar_idx] = self.forward(frames[input_idx0], frames[input_idx1])
+        ims = [im0] + [ABME._tensor_to_im(f) for f in frames[1:frame_num]]
+        # for item in range(len(frames) - 1, -1, -1):
+            # del frames[item]
+        # torch.cuda.empty_cache()
 
         return ims
