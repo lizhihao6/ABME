@@ -1,5 +1,6 @@
 import multiprocessing as mp
 import os
+from shutil import copyfile
 
 import numpy as np
 from imageio import imread, imwrite
@@ -19,10 +20,14 @@ def x16(ims):
     iter = trange(start_id, stop_id) if start_id == 0 else range(
         start_id, stop_id)
     for i in iter:
+        if start_id == 0:
+            print("{}/{}".format(i, stop_id), flush=True)
         input, output = ims[i]["input"], ims[i]["output"]
+        copyfile(input[0], output[0])
         for p, im in zip(
-                output,
-                abme.xVFI(imread(input[0]), imread(input[1]), frame_num=16)):
+                output[1:],
+                abme.xVFI(imread(input[0]), imread(input[1]),
+                          frame_num=16)[1:]):
             imwrite(p, im)
 
 
