@@ -1,5 +1,5 @@
-import multiprocessing as mp
 import os
+from multiprocessing.dummy import Pool
 from shutil import copyfile
 
 import numpy as np
@@ -9,20 +9,18 @@ from tqdm import trange
 from model.ABMENet import ABME
 
 PATH = "/data/stereo_blur"
-GPU_NUM = 8
+GPU_NUM = 4
 BATCH_SIZE = 2
 
 
-def x16(ims):
-    mp_idx = os.getpid() % GPU_NUM
+def x16(ims, mp_idx):
     step = int(np.ceil(float(len(ims)) / GPU_NUM))
-    start_id, stop_id = step * mp_idx, min(step * mp_idx + step, len(ims))
+    start_id, stop_id = step * mp_idx, max(step * mp_idx + step, len(ims))
+    print(start_id, stop_id, mp_idx, flush=True)
     abme = ABME("cuda:{}".format(mp_idx), frame_num=16)
     iter = trange(start_id, stop_id, BATCH_SIZE) if start_id == 0 else range(
         start_id, stop_id, BATCH_SIZE)
     for i in iter:
-        if start_id == 0:
-            print("{}/{}".format(i, stop_id), flush=True)
         batch_im0 = [ims[i + j]["input"][0] for j in range(BATCH_SIZE)]
         batch_im16 = [ims[i + j]["input"][1] for j in range(BATCH_SIZE)]
         batch_outputs = [ims[i + j]["output"] for j in range(BATCH_SIZE)]
@@ -43,8 +41,8 @@ def x16(ims):
 
 def dist_x16(ims):
     print("gpu cores: {}".format(GPU_NUM))
-    gpu_pool = mp.Pool(GPU_NUM)
-    results = [gpu_pool.apply_async(x16, args=(ims,))]
+    gpu_pool = Pool(GPU_NUM)
+    results = [gpu_pool.apply_async(x16, args=(ims, i,)) for i in range(GPU_NUM)]
     results = [p.get() for p in results]
 
 
