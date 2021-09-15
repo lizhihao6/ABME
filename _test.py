@@ -3,8 +3,9 @@ import os
 import time
 from shutil import copyfile
 
-from imageio import imread, imwrite
 from cv2 import resize
+from imageio import imread, imwrite
+
 from model.ABMENet import ABME
 
 SAVE_DIR = "test_output"

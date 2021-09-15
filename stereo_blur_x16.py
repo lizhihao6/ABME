@@ -32,12 +32,7 @@ def dist_imwrite(pool, paths, ims):
     results = [p.get() for p in results]
 
 
-def x16(ims):
-    num_cores = int(mp.cpu_count()) // GPU_NUM
-    assert num_cores > 0
-    print("num cores: {}".format(num_cores))
-    pool = mp.Pool(num_cores)
-
+def x16(ims, pool):
     mp_idx = os.getpid() % GPU_NUM
     step = int(np.ceil(float(len(ims)) / GPU_NUM))
     start_id, stop_id = step * mp_idx, min(step * mp_idx + step, len(ims))
@@ -67,10 +62,14 @@ def x16(ims):
 
 
 def dist_x16(ims):
-    num_cores = GPU_NUM
-    print("num cores: {}".format(num_cores))
-    pool = mp.Pool(num_cores)
-    results = [pool.apply_async(x16, args=(ims,))]
+    cpu_num = int(mp.cpu_count()) // GPU_NUM
+    assert cpu_num > 0
+    print("cpu cores: {}".format(cpu_num))
+    cpu_pool = mp.Pool(cpu_num)
+
+    print("gpu cores: {}".format(GPU_NUM))
+    gpu_pool = mp.Pool(GPU_NUM)
+    results = [gpu_pool.apply_async(x16, args=(ims, cpu_pool))]
     results = [p.get() for p in results]
 
 
