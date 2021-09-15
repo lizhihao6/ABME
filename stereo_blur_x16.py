@@ -12,30 +12,6 @@ PATH = "/data/stereo_blur"
 GPU_NUM = 8
 BATCH_SIZE = 2
 
-cpu_num = int(mp.cpu_count()) // GPU_NUM
-assert cpu_num > 0
-print("cpu cores: {}".format(cpu_num))
-cpu_pool = mp.Pool(cpu_num)
-
-
-def son_imread(idx, path):
-    return idx, imread(path)
-
-
-def dist_imread(pool, paths):
-    results = [
-        pool.apply_async(son_imread, args=(i, p)) for i, p in enumerate(paths)
-    ]
-    results = [p.get() for p in results]
-    return [r[1] for r in sorted(results, key=lambda x: x[0])]
-
-
-def dist_imwrite(pool, paths, ims):
-    results = [
-        pool.apply_async(imwrite, args=(p, im)) for p, im in zip(paths, ims)
-    ]
-    results = [p.get() for p in results]
-
 
 def x16(ims):
     mp_idx = os.getpid() % GPU_NUM
@@ -52,18 +28,17 @@ def x16(ims):
         batch_outputs = [ims[i + j]["output"] for j in range(BATCH_SIZE)]
         for b in range(BATCH_SIZE):
             copyfile(batch_im0[b], batch_outputs[b][0])
-        # batch_im0 = dist_imread(pool, batch_im0)
-        # batch_im16 = dist_imread(pool, batch_im16)
         batch_im0, batch_im16 = [imread(p) for p in batch_im0
                                  ], [imread(p) for p in batch_im16]
-        for b, ims in enumerate(abme.xVFI(batch_im0, batch_im16)):
-            dist_imwrite(cpu_pool, batch_outputs[b][1:], ims[1:])
+        for b, _ims in enumerate(abme.xVFI(batch_im0, batch_im16)):
+            for p, im in zip(batch_outputs[b][1:], _ims[1:]):
+                imwrite(p, im)
     for i in range((stop_id - start_id) // BATCH_SIZE * BATCH_SIZE + start_id,
                    stop_id):
         batch_im0, batch_im16 = [imread(ims[i]["input"][0])
                                  ], [imread(ims[i]["input"][1])]
-        ims = abme.xVFI(batch_im0, batch_im16)[0]
-        dist_imwrite(cpu_pool, [ims[i]["output"]], ims)
+        for p, im in zip(ims[i]["output"], abme.xVFI(batch_im0, batch_im16)[0]):
+            imwrite(p, im)
 
 
 def dist_x16(ims):
