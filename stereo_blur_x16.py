@@ -1,4 +1,6 @@
+import argparse
 import os
+import pickle
 from multiprocessing.dummy import Pool
 from shutil import copyfile
 
@@ -8,9 +10,42 @@ from tqdm import trange
 
 from model.ABMENet import ABME
 
+parser = argparse.ArgumentParser(description='idx')
+parser.add_argument('--idx', type=int, required=True, help='idx')
+args = parser.parse_args()
+
 PATH = "/data/stereo_blur"
-GPU_NUM = 4
+GPU_NUM = 8
 BATCH_SIZE = 2
+
+
+def get_ims():
+    ims_path = "ims.pkl"
+    if os.path.exists(ims_path):
+        with open(ims_path, "rb+") as f:
+            return pickle.load(f)
+    dirs = [
+        os.path.join(PATH, d, "image_left") for d in os.listdir(PATH)
+        if os.path.isdir(os.path.join(PATH, d))
+    ]
+    dirs += [d.replace("left", "right") for d in dirs]
+    ims = []
+    for d in dirs:
+        input_format = "%0{}d.png".format(len(os.listdir(d)[0]) - 4)
+        im_ids = sorted(int(float(s[:-4])) for s in os.listdir(d))
+        if not os.path.exists(d + "_x16"):
+            os.makedirs(d + "_x16")
+        for i in im_ids[:-1]:
+            ims.append({
+                "input": (os.path.join(d, input_format % i),
+                          os.path.join(d, input_format % (i + 1))),
+                "output": [
+                    os.path.join(d + "_x16", "%05d.png" % _i)
+                    for _i in range(i * 16, i * 16 + 16)
+                ]
+            })
+    with open(ims_path, "wb+") as f:
+        pickle.dump(ims, f)
 
 
 def x16(ims, mp_idx):
@@ -47,24 +82,6 @@ def dist_x16(ims):
 
 
 if __name__ == '__main__':
-    dirs = [
-        os.path.join(PATH, d, "image_left") for d in os.listdir(PATH)
-        if os.path.isdir(os.path.join(PATH, d))
-    ]
-    dirs += [d.replace("left", "right") for d in dirs]
-    ims = []
-    for d in dirs:
-        input_format = "%0{}d.png".format(len(os.listdir(d)[0])-4)
-        im_ids = sorted(int(float(s[:-4])) for s in os.listdir(d))
-        if not os.path.exists(d + "_x16"):
-            os.makedirs(d + "_x16")
-        for i in im_ids[:-1]:
-            ims.append({
-                "input": (os.path.join(d, input_format % i),
-                          os.path.join(d, input_format % (i + 1))),
-                "output": [
-                    os.path.join(d + "_x16", "%05d.png" % _i)
-                    for _i in range(i * 16, i * 16 + 16)
-                ]
-            })
-    dist_x16(ims)
+    ims = get_ims()
+    assert len(ims) % 4 == 0
+    # dist_x16(ims[args.idx*len(ims)//4:(args.idx+1)*len(ims)//4])
