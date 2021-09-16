@@ -15,7 +15,7 @@ BATCH_SIZE = 2
 
 def x16(ims, mp_idx):
     step = int(np.ceil(float(len(ims)) / GPU_NUM))
-    start_id, stop_id = step * mp_idx, max(step * mp_idx + step, len(ims))
+    start_id, stop_id = step * mp_idx, min(step * mp_idx + step, len(ims))
     print(start_id, stop_id, mp_idx, flush=True)
     abme = ABME("cuda:{}".format(mp_idx), frame_num=16)
     iter = trange(start_id, stop_id, BATCH_SIZE) if start_id == 0 else range(
