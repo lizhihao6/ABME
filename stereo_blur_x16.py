@@ -54,7 +54,7 @@ if __name__ == '__main__':
     dirs += [d.replace("left", "right") for d in dirs]
     ims = []
     for d in dirs:
-        put_format = "%0{}d.png".format(len(os.listdir(d)[0])-4)
+        input_format = "%0{}d.png".format(len(os.listdir(d)[0])-4)
         im_ids = sorted(int(float(s[:-4])) for s in os.listdir(d))
         if not os.path.exists(d + "_x16"):
             os.makedirs(d + "_x16")
