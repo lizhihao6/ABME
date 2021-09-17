@@ -1,6 +1,6 @@
-import argparse
 import os
 import pickle
+import sys
 from multiprocessing.dummy import Pool
 from shutil import copyfile
 
@@ -9,10 +9,6 @@ from imageio import imread, imwrite
 from tqdm import trange
 
 from model.ABMENet import ABME
-
-parser = argparse.ArgumentParser(description='idx')
-parser.add_argument('--idx', type=int, required=True, help='idx')
-args = parser.parse_args()
 
 PATH = "/data/stereo_blur"
 GPU_NUM = 8
@@ -46,6 +42,7 @@ def get_ims():
             })
     with open(ims_path, "wb+") as f:
         pickle.dump(ims, f)
+    return ims
 
 
 def x16(ims, mp_idx):
@@ -56,22 +53,17 @@ def x16(ims, mp_idx):
     iter = trange(start_id, stop_id, BATCH_SIZE) if start_id == 0 else range(
         start_id, stop_id, BATCH_SIZE)
     for i in iter:
-        batch_im0 = [ims[i + j]["input"][0] for j in range(BATCH_SIZE)]
-        batch_im16 = [ims[i + j]["input"][1] for j in range(BATCH_SIZE)]
-        batch_outputs = [ims[i + j]["output"] for j in range(BATCH_SIZE)]
-        for b in range(BATCH_SIZE):
+        batch_size = BATCH_SIZE if i + BATCH_SIZE < stop_id else stop_id - 1 - i
+        batch_im0 = [ims[i + j]["input"][0] for j in range(batch_size)]
+        batch_im16 = [ims[i + j]["input"][1] for j in range(batch_size)]
+        batch_outputs = [ims[i + j]["output"] for j in range(batch_size)]
+        for b in range(batch_size):
             copyfile(batch_im0[b], batch_outputs[b][0])
         batch_im0, batch_im16 = [imread(p) for p in batch_im0
                                  ], [imread(p) for p in batch_im16]
         for b, _ims in enumerate(abme.xVFI(batch_im0, batch_im16)):
             for p, im in zip(batch_outputs[b][1:], _ims[1:]):
                 imwrite(p, im)
-    for i in range((stop_id - start_id) // BATCH_SIZE * BATCH_SIZE + start_id,
-                   stop_id):
-        batch_im0, batch_im16 = [imread(ims[i]["input"][0])
-                                 ], [imread(ims[i]["input"][1])]
-        for p, im in zip(ims[i]["output"], abme.xVFI(batch_im0, batch_im16)[0]):
-            imwrite(p, im)
 
 
 def dist_x16(ims):
@@ -82,6 +74,7 @@ def dist_x16(ims):
 
 
 if __name__ == '__main__':
+    idx = int(sys.argv[1])
     ims = get_ims()
     assert len(ims) % 4 == 0
-    # dist_x16(ims[args.idx*len(ims)//4:(args.idx+1)*len(ims)//4])
+    dist_x16(ims[idx * len(ims) // 4:(idx + 1) * len(ims) // 4])

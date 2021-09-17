@@ -11,11 +11,11 @@ from .SBMNet import SBMENet
 from .SynthesisNet import SynthesisNet
 
 cudnn.benchmark = True
-import argparse
 
-parser = argparse.ArgumentParser()
-args = parser.parse_args()
-args.DDP = False
+
+class FAKE_ARGS:
+    def __init__(self):
+        self.DDP = False
 
 
 class ABME(torch.nn.Module):
@@ -37,6 +37,7 @@ class ABME(torch.nn.Module):
 
         SBMNet = SBMENet()
         ABMNet = ABMRNet()
+        args = FAKE_ARGS()
         SynNet = SynthesisNet(args)
 
         SBMNet.load_state_dict(
