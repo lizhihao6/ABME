@@ -53,7 +53,9 @@ def x16(ims, mp_idx):
     iter = trange(start_id, stop_id, BATCH_SIZE) if start_id == 0 else range(
         start_id, stop_id, BATCH_SIZE)
     for i in iter:
-        batch_size = BATCH_SIZE if i + BATCH_SIZE < stop_id else stop_id - 1 - i
+        if start_id==0:
+            print(i, flush=True)
+        batch_size = BATCH_SIZE if i + BATCH_SIZE < stop_id else stop_id - i
         batch_im0 = [ims[i + j]["input"][0] for j in range(batch_size)]
         batch_im16 = [ims[i + j]["input"][1] for j in range(batch_size)]
         batch_outputs = [ims[i + j]["output"] for j in range(batch_size)]
@@ -76,5 +78,8 @@ def dist_x16(ims):
 if __name__ == '__main__':
     idx = int(sys.argv[1])
     ims = get_ims()
-    assert len(ims) % 4 == 0
-    dist_x16(ims[idx * len(ims) // 4:(idx + 1) * len(ims) // 4])
+    start_id = idx * len(ims) // 8
+    stop_id = (idx + 1) * len(ims)//8
+    if len(ims)-stop_id <= 8:
+        stop_id = len(ims)
+    dist_x16(ims[start_id:stop_id])
